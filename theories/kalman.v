@@ -147,10 +147,11 @@ Lemma predict_cov_psd (P : 'M[R]_n) :
   psd P -> psd (predict_cov P).
 Proof.
 move=> pPs.
-have h1 : psd (F *m P *m F^T) := psd_mulmx_row n n P F pPs.
+have h1 : psd (F *m P *m F^T) := @psd_mulmx_row R n n P F pPs.
 have h2 : psd Q := Q_psd.
 have hsum : psd (F *m P *m F^T + Q) := psd_add h1 h2.
-exact: (by simpa [predict_cov] using hsum).
+rewrite /predict_cov.
+exact: hsum.
 Qed.
 
 (* ================================================================== *)
