@@ -1,0 +1,8 @@
+_opam/
+_build/
+**/*.glob
+**/*.cache
+**/*.aux
+**/*.vo
+**/*.vok
+**/*.vos

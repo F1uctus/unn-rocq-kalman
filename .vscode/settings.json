@@ -1,0 +1,18 @@
+{
+  "vsrocq.path": "./_opam/bin/vsrocqtop",
+  "files.exclude": {
+    "_build": true,
+    "**/*.glob": true,
+    "**/*.cache": true,
+    "**/*.aux": true,
+    "**/*.vo": true,
+    "**/*.vok": true,
+    "**/*.vos": true
+  },
+  "editor.lineNumbers": "off",
+  "vsrocq.completion.enable": true,
+  "vsrocq.goals.auto": true,
+  "vsrocq.proof.mode": 1,
+  "cSpell.words": ["Corelib", "Kalman", "mult", "Rocq", "Setoid", "Stdlib"],
+  "git.ignoreLimitWarning": true
+}
