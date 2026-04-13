@@ -15,6 +15,12 @@ Import Num.Theory.
 Import Order.Theory.
 Open Scope ring_scope.
 
+Lemma trmx_add (K : realFieldType) m n (A C : 'M[K]_(m, n)) : (A + C)^T = A^T + C^T.
+Proof.
+  apply/matrixP => i j.
+  by rewrite !mxE.
+Qed.
+
 (* ================================================================== *)
 (* §0  Предикат положительной полуопределённости (ключевой для        *)
 (*     ковариационных матриц)                                         *)
@@ -66,44 +72,35 @@ Qed.
 Lemma psd_congruence n p (A : 'M[R]_n) (M : 'M[R]_(n, p)) :
   psd A -> psd (M^T *m A *m M).
 Proof.
-case=> Asym psdA; split.
-  by rewrite trmx_mul trmx_mul !trmxK mulmxA /= Asym mulmxA.
-move=> v; rewrite -!mulmxA trmx_mul trmx_mul !trmxK !mulmxA.
-exact: psdA (M *m v).
+  case=> Asym psdA; split.
+    by rewrite trmx_mul trmx_mul !trmxK mulmxA -Asym.
+    by move=> v; rewrite !mulmxA -mulmxA -trmx_mul; exact: psdA (M *m v).
 Qed.
 
 Lemma psd_mulmx_row n m (A : 'M[R]_m) (M : 'M[R]_(n, m)) :
   psd A -> psd (M *m A *m M^T).
 Proof.
-move=> psdA; have -> : (M *m A *m M^T) = (M^T)^T *m A *m M^T by rewrite trmxK.
-exact: (@psd_congruence _ m A (M^T)).
+  move=> psdA; have -> : (M *m A *m M^T) = (M^T)^T *m A *m M^T by rewrite trmxK.
+  exact: (@psd_congruence _ _ A M^T psdA).
 Qed.
 
 Lemma psd_tr_ge0 n (M : 'M[R]_n) : psd M -> \tr M >= 0.
 Proof.
-case=> Msym psdM; rewrite /mxtrace; apply: ler_sum => i _.
-have := psdM (delta_mx i 0).
-rewrite trace_mx11 !mulmx_delta !mxE !eqxx mulr1n !addr0 add0r.
-by rewrite mulr1n addr0.
+  case=> Msym psdM; rewrite -(@mxtrace0 _ n) /mxtrace; apply: ler_sum => i _.
+  rewrite mxE; have h := psdM (delta_mx i ord0).
+  by rewrite trmx_delta -rowE -colE trace_mx11 !mxE in h.
 Qed.
 
 Lemma pd_invertible n (M : 'M[R]_n) : pd M -> M \in unitmx.
 Proof.
-move=> pdM; apply/negPn/negP=> /eqP M_not_unit.
-have /negP/negPn : ~~ row_full M by rewrite -row_full_unit unitE /= M_not_unit.
-rewrite -cokermx_eq0 negbK=> Cnz.
-have /matrix_eq0Pn /existsP[i] /existsP[j] Mij0: cokermx M != 0 by [].
-pose v := cokermx M *m delta_mx j 0 : 'cV[R]_n.
-have vNZ : v != 0.
-  apply: contraNN Mij0; rewrite /v negbK => /matrixP /(_ i 0) /=.
-  rewrite mulmxE summxE (bigD1 j) //= !mxE !eqxx mulr1.
-  rewrite big1 ?mxE ?addr0 // => k /andP[kDj _].
-  by rewrite mxE (negPf kDj) mulr0.
-have Mvk0 : M *m v = 0 by rewrite /v -mulmxA mulmx_coker mul0mx.
-have quad0 : \tr (v^T *m M *m v) = 0.
-  rewrite -[RHS]addr0 -(subrr (\tr 0)) -{1}(mulmx0 0 v) -Mvk0.
-  by rewrite mulmx0 mxtrace0 addr0.
-by move: (pdM.2 v vNZ); rewrite quad0 ltrr.
+  move=> [Msym pdM]; apply: contraT => Mnu.
+  have Cnz : cokermx M != 0 by rewrite cokermx_eq0 row_full_unit.
+  have /matrix0Pn [i [j Cij_nz]] := Cnz.
+  pose v := cokermx M *m delta_mx j ord0 : 'cV[R]_n.
+  have vNZ : v != 0.
+  apply/cV0Pn; exists i; rewrite /v -colE mxE; exact: Cij_nz.
+  have Mv0 : M *m v = 0 by rewrite /v mulmxA mulmx_coker mul0mx.
+  by move: (pdM v vNZ); rewrite -mulmxA Mv0 mulmx0 mxtrace0 ltxx.
 Qed.
 
 End PSD.
@@ -137,12 +134,24 @@ Definition predict_cov (P_prev : 'M[R]_n) : 'M[R]_n :=
 (* Предсказанная ковариация симметрична *)
 Lemma predict_cov_sym (P : 'M[R]_n) :
   P = P^T -> predict_cov P = (predict_cov P)^T.
-Proof. Admitted.
+Proof.
+  move=> Psym.
+  have hP : (F *m P *m F^T)^T = F *m P *m F^T.
+    by rewrite trmx_mul trmx_mul !trmxK -mulmxA -Psym.
+  rewrite /predict_cov trmx_add hP -Q_psd.1.
+  done.
+Qed.
 
 (* Предсказанная ковариация сохраняет положительную полуопределённость *)
 Lemma predict_cov_psd (P : 'M[R]_n) :
   psd P -> psd (predict_cov P).
-Proof. Admitted.
+Proof.
+move=> pPs.
+have h1 : psd (F *m P *m F^T) := psd_mulmx_row n n P F pPs.
+have h2 : psd Q := Q_psd.
+have hsum : psd (F *m P *m F^T + Q) := psd_add h1 h2.
+exact: (by simpa [predict_cov] using hsum).
+Qed.
 
 (* ================================================================== *)
 (* §2  Инновационная ковариация, усиление Калмана,                    *)
