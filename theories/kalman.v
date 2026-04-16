@@ -146,8 +146,8 @@ Qed.
 Lemma predict_cov_psd (P : 'M[R]_n) :
   psd P -> psd (predict_cov P).
 Proof.
-move=> pPs.
-have h1 : psd (F *m P *m F^T) := @psd_mulmx_row R n n P F pPs.
+  move=> psdP.
+  have h1 : psd (F *m P *m F^T) := @psd_mulmx_row R n n P F psdP.
 have h2 : psd Q := Q_psd.
 have hsum : psd (F *m P *m F^T + Q) := psd_add h1 h2.
 rewrite /predict_cov.
@@ -166,11 +166,40 @@ Definition innov_cov (P_pred : 'M[R]_n) : 'M[R]_m :=
 
 Lemma innov_cov_pd (P_pred : 'M[R]_n) :
   psd P_pred -> pd (innov_cov P_pred).
-Proof. Admitted.
+Proof.
+  move=> psdP.
+  have hpsd : psd (H *m P_pred *m H^T) := @psd_mulmx_row R m n P_pred H psdP.
+  split.
+  - rewrite /innov_cov.
+    rewrite trmx_add.
+    f_equal.
+    * exact hpsd.1.
+    * exact R_pd.1.
+  - move=> v v0.
+    have h1 : 0 <= \tr (v^T *m (H *m P_pred *m H^T) *m v) := hpsd.2 v.
+    have h2 : 0 < \tr (v^T *m Rcov *m v) := R_pd.2 v v0.
+    rewrite /innov_cov.
+    rewrite mulmxDr.
+    rewrite mulmxDl.
+    rewrite mxtraceD.
+    have hsum : 0 <
+        \tr (v^T *m (H *m P_pred *m H^T) *m v) +
+        \tr (v^T *m Rcov *m v) :=
+      ltr_wpDl
+        (y := 0)
+        (x := \tr (v^T *m (H *m P_pred *m H^T) *m v))
+        (z := \tr (v^T *m Rcov *m v))
+        h1 h2.
+    exact hsum.
+Qed.
 
 Lemma innov_cov_inv (P_pred : 'M[R]_n) :
   psd P_pred -> innov_cov P_pred \in unitmx.
-Proof. Admitted.
+Proof.
+  move=> psdP.
+  have hpd : pd (innov_cov P_pred) := innov_cov_pd psdP.
+  exact: pd_invertible hpd.
+Qed.
 
 (* Усиление (коэффициент) Калмана *)
 
